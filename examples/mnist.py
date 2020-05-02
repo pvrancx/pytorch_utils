@@ -62,11 +62,13 @@ def config():
 
 def experiment(lr=1e-4):
     network = Net()
+    optimizer = optim.Adadelta(network.parameters(), lr=lr)
     return Experiment(
         model=network,
-        optimizer=optim.Adadelta(network.parameters(), lr=lr),
+        optimizer=optimizer,
         config=config(),
-        loss_fn=F.nll_loss
+        loss_fn=F.nll_loss,
+        lr_scheduler=optim.lr_scheduler.ReduceLROnPlateau(optimizer)
     )
 
 

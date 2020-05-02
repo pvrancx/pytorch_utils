@@ -1,7 +1,19 @@
+from typing import Tuple
+
 import torch
 
 from torchutils.callbacks import CallbackHandler
 from torchutils.experiment import Experiment, DataLoaders
+
+
+def process_batch(exp: Experiment, batch: Tuple) -> float:
+    inputs, labels = batch
+    exp.optimizer.zero_grad()
+    outputs = exp.model(inputs)
+    loss = exp.loss_fn(outputs, labels)
+    loss.backward()
+    exp.optimizer.step()
+    return loss
 
 
 def train(
@@ -16,13 +28,9 @@ def train(
     count = 0
     for batch_id, (inputs, labels) in enumerate(data_loader):
         callbacks.on_batch_start(batch_id, (inputs, labels))
-        exp.optimizer.zero_grad()
         inputs, labels = inputs.to(exp.config.device), labels.to(exp.config.device)
-        outputs = exp.model(inputs)
-        loss = exp.loss_fn(outputs, labels)
-        loss.backward()
-        exp.optimizer.step()
-        train_loss += loss.sum()
+        loss = process_batch(exp, (inputs, labels))
+        train_loss += loss
         count += labels.size(0)
         callbacks.on_batch_end(batch_id, loss)
     return train_loss / count
@@ -52,6 +60,8 @@ def fit(exp: Experiment, data: DataLoaders, callbacks: CallbackHandler):
         callbacks.on_epoch_start(epoch)
         train(exp, data.train, callbacks)
         valid_loss = evaluate(exp, data.test)
+        if exp.lr_scheduler is not None:
+            exp.lr_scheduler.step(valid_loss)
         callbacks.on_epoch_end(epoch, valid_loss)
     callbacks.on_train_end()
     return exp

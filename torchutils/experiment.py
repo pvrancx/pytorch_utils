@@ -1,4 +1,4 @@
-from typing import NamedTuple, Callable
+from typing import NamedTuple, Callable, Any
 import torch
 import torch.nn as nn
 
@@ -16,6 +16,7 @@ class DataLoaders(NamedTuple):
 class Experiment(NamedTuple):
     model: nn.Module
     optimizer: torch.optim.Optimizer
+    lr_scheduler: Any
     loss_fn: Callable
     config: Config
 
