@@ -33,7 +33,7 @@ def train(
         train_loss += loss
         count += labels.size(0)
         callbacks.on_batch_end(batch_id, loss)
-    return train_loss / count
+    return train_loss / len(data_loader)
 
 
 def evaluate(
