@@ -83,7 +83,7 @@ class ModelSaverCallback(Callback):
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': self.exp.model.state_dict(),
-                ' optimizer_state_dict': self.exp.optimizer.state_dict(),
+                'optimizer_state_dict': self.exp.optimizer.state_dict(),
                 'loss': loss,
             }, fname)
         return True
@@ -99,10 +99,15 @@ class LoggerCallback(Callback):
 
     def on_train_start(self, exp: Experiment, data: DataLoaders) -> bool:
         self._n_batches = len(data.train)
+        return True
 
     def on_batch_end(self, batch_id: int, loss: float) -> bool:
-        self._avg = loss if self._avg == 0. \
-            else (self._avg * self._alpha) + (1. - self._alpha) * loss
+        if self._avg == 0.:
+            self._avg = loss
+        else:
+            self._avg *= self._alpha
+            self._avg += (1. - self._alpha) * loss
+
         if batch_id % self._freq == 0:
             print("Batch %d/%d - loss %1.5f" % (batch_id, self._n_batches,  self._avg))
         return True

@@ -61,7 +61,7 @@ def fit(exp: Experiment, data: DataLoaders, callbacks: CallbackHandler):
         train(exp, data.train, callbacks)
         valid_loss = evaluate(exp, data.test)
         if exp.lr_scheduler is not None:
-            exp.lr_scheduler.step(epoch=epoch, metrics=valid_loss)
+            exp.lr_scheduler.step(metrics=valid_loss)
         callbacks.on_epoch_end(epoch, valid_loss)
     callbacks.on_train_end()
     return exp
