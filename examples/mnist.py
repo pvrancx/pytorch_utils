@@ -6,6 +6,7 @@ import torch.optim as optim
 from torchutils.callbacks import CallbackHandler, ModelSaverCallback, LoggerCallback
 from torchutils.dataloaders import mnist_loader
 from torchutils.experiment import Config, Experiment
+from torchutils.metrics import BatchMetric, accuracy
 from torchutils.train import fit
 
 
@@ -37,7 +38,7 @@ class Net(nn.Module):
 
 def config():
     return Config(
-        max_epochs=100,
+        max_epochs=2,
         device=torch.device("cpu")
     )
 
@@ -57,7 +58,8 @@ def experiment(lr=1e-4):
 def callbacks():
     return CallbackHandler([
         LoggerCallback(),
-        ModelSaverCallback('.', frequency=10)]
+        ModelSaverCallback('.', frequency=10),
+        BatchMetric(f=accuracy)]
     )
 
 
@@ -65,6 +67,7 @@ def _main():
     data = mnist_loader(path='../data')
     exp = experiment()
     fit(exp, data, callbacks())
+    print(exp.metrics)
 
 
 if __name__ == '__main__':

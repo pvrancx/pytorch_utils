@@ -1,19 +1,20 @@
-from typing import Tuple
+from typing import Tuple, Callable
 
 import torch
 
 from torchutils.callbacks import CallbackHandler
 from torchutils.experiment import Experiment, DataLoaders
+from torchutils.metrics import ValidationMetric
 
 
-def process_batch(exp: Experiment, batch: Tuple) -> float:
+def process_batch(exp: Experiment, batch: Tuple) -> Tuple[torch.Tensor, float]:
     inputs, labels = batch
     exp.optimizer.zero_grad()
     outputs = exp.model(inputs)
     loss = exp.loss_fn(outputs, labels)
     loss.backward()
     exp.optimizer.step()
-    return loss
+    return outputs, loss
 
 
 def train(
@@ -24,44 +25,21 @@ def train(
 
     exp.model.to(exp.config.device)
     exp.model.train()
-    train_loss = 0.0
-    count = 0
     for batch_id, (inputs, labels) in enumerate(data_loader):
         callbacks.on_batch_start(batch_id, (inputs, labels))
         inputs, labels = inputs.to(exp.config.device), labels.to(exp.config.device)
-        loss = process_batch(exp, (inputs, labels))
-        train_loss += loss
-        count += labels.size(0)
-        callbacks.on_batch_end(batch_id, loss)
-    return train_loss / len(data_loader)
-
-
-def evaluate(
-        exp: Experiment,
-        data_loader: torch.utils.data.DataLoader,
-) -> float:
-
-    exp.model.to(exp.config.device)
-    exp.model.eval()
-    test_loss = 0.0
-    count = 0
-    for inputs, labels in data_loader:
-        with torch.no_grad():
-            inputs, labels = inputs.to(exp.config.device), labels.to(exp.config.device)
-            outputs = exp.model(inputs)
-            test_loss += exp.loss_fn(outputs, labels).sum()
-            count += labels.size(0)
-    return test_loss / count
+        predictions, loss = process_batch(exp, (inputs, labels))
+        callbacks.on_batch_end(batch_id, predictions, loss)
 
 
 def fit(exp: Experiment, data: DataLoaders, callbacks: CallbackHandler):
+    callbacks.add_callback(ValidationMetric(exp.loss_fn, data.test,  'validation_loss'), -1)
     callbacks.on_train_start(exp, data)
     for epoch in range(exp.config.max_epochs):
         callbacks.on_epoch_start(epoch)
         train(exp, data.train, callbacks)
-        valid_loss = evaluate(exp, data.test)
+        callbacks.on_epoch_end(epoch)
         if exp.lr_scheduler is not None:
-            exp.lr_scheduler.step(metrics=valid_loss)
-        callbacks.on_epoch_end(epoch, valid_loss)
+            exp.lr_scheduler.step(metrics=exp.metrics[epoch]['validation_loss'])
     callbacks.on_train_end()
     return exp

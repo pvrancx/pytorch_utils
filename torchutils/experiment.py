@@ -1,4 +1,4 @@
-from typing import NamedTuple, Callable, Any
+from typing import NamedTuple, Callable, Any, Dict
 import torch
 import torch.nn as nn
 
@@ -19,4 +19,5 @@ class Experiment(NamedTuple):
     lr_scheduler: Any
     loss_fn: Callable
     config: Config
+    metrics: Dict[int, Dict] = {}
 
