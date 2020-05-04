@@ -26,14 +26,16 @@ def evaluate(
 
 
 def accuracy(predictions: torch.Tensor, targets: torch.Tensor) -> float:
-    return torch.sum(torch.argmax(predictions, dim=-1) == targets).detach().numpy()
+    acc = (targets.argmax(-1) == predictions.argmax(-1)).float()
+    return torch.mean(acc).detach().numpy()
 
 
 def mse(predictions: torch.Tensor, targets: torch.Tensor) -> float:
-    return torch.sum((predictions - targets) ** 2.).detach().numpy()
+    return torch.mean((predictions - targets) ** 2.).detach().numpy()
 
 
 class BatchMetric(Callback):
+    """Metric that computed over batches"""
     def __init__(self, f: Callable, name: str = None, f_args: Dict = None):
         super(BatchMetric, self).__init__()
         self._name = name or f.__name__
@@ -56,13 +58,14 @@ class BatchMetric(Callback):
         return True
 
     def on_batch_end(self, batch_id: int, predictions: torch.Tensor, loss: float) -> bool:
-        self._count += predictions.shape[0]
-        self._total += self._fun(predictions, self.last_batch[-1], **self._f_args)
+        n_items = predictions.shape[0]
+        self._count += n_items
+        self._total += self._fun(predictions, self.last_batch[-1], **self._f_args) * n_items
         return True
 
 
 class ValidationMetric(Callback):
-    """ Metric that evaluates criterion on given dataset on end of epoch"""
+    """ Metric that evaluates criterion on given dataset at end of epoch"""
     def __init__(
             self,
             criterion: Callable,

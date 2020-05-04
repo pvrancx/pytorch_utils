@@ -1,11 +1,11 @@
-from typing import Tuple
+from typing import Tuple, Callable
 
 import matplotlib.pyplot as plt
 import torch
 
 from torchutils.experiment import Experiment, DataLoaders
 from torchutils.train import process_batch
-from torchutils.utils import smooth
+from torchutils.utils import smooth, linear_annealing
 
 
 def update_lr(optimizer: torch.optim.Optimizer, new_lr: float):
@@ -18,11 +18,12 @@ def scan_lr(
         data: DataLoaders,
         min_lr: float,
         max_lr: float,
-        n_epochs: int
+        n_epochs: int,
+        anneal_f: Callable[[float, float, float], float] = linear_annealing
 ) -> Tuple:
 
     """
-    Scan over learning rates.
+    Scan learning rate range.
     Smith, 2015
     """
     update_lr(exp.optimizer, min_lr)
@@ -32,9 +33,9 @@ def scan_lr(
     n_batches = 0
     for epoch in range(n_epochs):
         for batch in data.train:
-            new_lr = min_lr + (n_batches / total_batches) * (max_lr - min_lr)
+            new_lr = anneal_f(min_lr, max_lr, n_batches / total_batches)
             update_lr(exp.optimizer, new_lr)
-            train_loss.append(process_batch(exp, batch))
+            train_loss.append(process_batch(exp, batch)[-1].detach().numpy())
             lrs.append(new_lr)
             n_batches += 1
     return lrs, train_loss
@@ -42,7 +43,10 @@ def scan_lr(
 
 def lr_plot(lrs, train_loss):
     plt.figure()
-    plt.plot(lrs, smooth(train_loss, 0.99), label='train loss')
+    smoothed_loss = smooth(train_loss, 0.99)
+    min_val = min(smoothed_loss)
+    plt.ylim([min_val, min_val * 3])
+    plt.plot(lrs, smoothed_loss, label='train loss')
     plt.legend()
     plt.show()
 

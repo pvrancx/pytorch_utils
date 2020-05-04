@@ -5,7 +5,7 @@ from torchvision.models import ResNet
 from torchvision.models.resnet import BasicBlock
 from torchutils.dataloaders import cifar10_loader
 from torchutils.experiment import Experiment, Config
-from torchutils.tuning import scan_lr
+from torchutils.tuning import scan_lr, lr_plot
 
 
 def config():
@@ -26,10 +26,11 @@ def experiment(lr=1e-4):
         lr_scheduler=optim.lr_scheduler.ReduceLROnPlateau(optimizer)
     )
 
+
 def _main():
     data = cifar10_loader(path='../data')
     exp = experiment()
-    res = scan_lr(exp, data, min_lr=0.001, max_lr=1, n_epochs=2)
+    res = scan_lr(exp, data, min_lr=0.001, max_lr=2, n_epochs=4)
     lr_plot(*res)
 
 

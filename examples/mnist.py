@@ -38,14 +38,14 @@ class Net(nn.Module):
 
 def config():
     return Config(
-        max_epochs=2,
+        max_epochs=200,
         device=torch.device("cpu")
     )
 
 
-def experiment(lr=1e-4):
+def experiment(lr=1e-1):
     network = Net()
-    optimizer = optim.Adadelta(network.parameters(), lr=lr)
+    optimizer = optim.SGD(network.parameters(), lr=lr)
     return Experiment(
         model=network,
         optimizer=optimizer,

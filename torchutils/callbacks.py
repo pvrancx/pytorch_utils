@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
 
 import torch
 
@@ -12,6 +12,9 @@ class Callback:
         self.data = None  # type: Optional[DataLoaders]
         self.last_batch = None  # type: Optional[Tuple]
         self.last_predictions = None  # type: Optional[torch.Tensor]
+
+    def get_state_dict(self) -> Dict[str, Any]:
+        return {}
 
     def on_train_start(self, exp: Experiment, data: DataLoaders) -> bool:
         self.exp = exp
@@ -40,6 +43,13 @@ class CallbackHandler:
     def __init__(self, callbacks: Optional[List[Callback]] = None):
         self._callbacks = [(0, cb) for cb in callbacks] if callbacks is not None else []
         self._callbacks.sort(key=lambda x: x[0])
+
+    def get_state_dict(self):
+        return {cb.__name__: (order, cb.get_state_dict()) for order, cb in self._callbacks}
+
+    def _call_cb_method(self, method_name: str, **kwargs):
+        for _, cb in self._callbacks:
+            getattr(cb, method_name)(**kwargs)
 
     def add_callback(self, callback: Callback, priority: int = 0):
         self._callbacks.append((priority, callback))
@@ -126,3 +136,4 @@ class LoggerCallback(Callback):
         print("Finished epoch %d - loss %1.5f" % (epoch, loss))
         self._avg = 0.
         return True
+
