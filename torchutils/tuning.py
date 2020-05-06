@@ -26,6 +26,9 @@ def scan_lr(
     Scan learning rate range.
     Smith, 2015
     """
+    exp.model.to(exp.config.device)
+    exp.model.train()
+
     update_lr(exp.optimizer, min_lr)
     total_batches = len(data.train) * n_epochs - 1
     lrs = []
