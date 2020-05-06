@@ -2,6 +2,8 @@ from typing import NamedTuple, Callable, Any, Dict
 import torch
 import torch.nn as nn
 
+VALIDATION_LOSS_LABEL = 'validation loss'
+
 
 class Config(NamedTuple):
     max_epochs: int

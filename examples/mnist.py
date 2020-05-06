@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from torchutils.callbacks import CallbackHandler, ModelSaverCallback, LoggerCallback
 from torchutils.dataloaders import mnist_loader
 from torchutils.experiment import Config, Experiment
-from torchutils.metrics import BatchMetric, accuracy
+from torchutils.metrics import BatchMetric, accuracy, ValidationMetric
 from torchutils.train import fit
 
 
@@ -55,18 +56,22 @@ def experiment(lr=1e-1):
     )
 
 
-def callbacks():
-    return CallbackHandler([
+def callbacks(exp, data):
+    return [
         LoggerCallback(),
         ModelSaverCallback('.', frequency=10),
-        BatchMetric(f=accuracy)]
-    )
+        ValidationMetric(accuracy, data.test, name='validation accuracy')
+    ]
 
 
 def _main():
     data = mnist_loader(path='../data')
     exp = experiment()
-    fit(exp, data, callbacks())
+    fit(exp, data,
+        callbacks=callbacks(exp, data),
+        metrics=[accuracy],
+        lr_schedulers=[ReduceLROnPlateau(exp.optimizer)]
+        )
     print(exp.metrics)
 
 

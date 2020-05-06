@@ -21,12 +21,12 @@ def evaluate(
             inputs, labels = inputs.to(exp.config.device), labels.to(exp.config.device)
             outputs = exp.model(inputs)
             test_loss += loss_fn(outputs, labels)
-            count += labels.size(0)
+            count += 1
     return test_loss / count
 
 
 def accuracy(predictions: torch.Tensor, targets: torch.Tensor) -> float:
-    acc = (targets.argmax(-1) == predictions.argmax(-1)).float()
+    acc = (targets == predictions.argmax(-1)).float()
     return torch.mean(acc).detach().numpy()
 
 
@@ -36,8 +36,8 @@ def mse(predictions: torch.Tensor, targets: torch.Tensor) -> float:
 
 class BatchMetric(Callback):
     """Metric that computed over batches"""
-    def __init__(self, f: Callable, name: str = None, f_args: Dict = None):
-        super(BatchMetric, self).__init__()
+    def __init__(self, f: Callable, name: str = None, f_args: Dict = None, priority: int = -1):
+        super(BatchMetric, self).__init__(priority)
         self._name = name or f.__name__
         self._fun = f
         self._f_args = f_args or {}
@@ -70,14 +70,18 @@ class ValidationMetric(Callback):
             self,
             criterion: Callable,
             dataloader: torch.utils.data.DataLoader,
-            name: str = None
+            name: str = None,
+            priority: int = -1
     ):
-        super(ValidationMetric, self). __init__()
+        super(ValidationMetric, self). __init__(priority)
         self.criterion = criterion
         self.dataloader = dataloader
         self._name = name or criterion.__name__
 
     def on_epoch_end(self, epoch: int) -> bool:
         value = evaluate(self.exp, self.criterion, self.dataloader)
-        self.exp.metrics[epoch] = {self._name: value}
+        if epoch in self.exp.metrics:
+            self.exp.metrics[epoch].update({self._name: value})
+        else:
+            self.exp.metrics[epoch] = {self._name: value}
         return True
