@@ -4,10 +4,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from torchutils.callbacks import CallbackHandler, ModelSaverCallback, LoggerCallback
+from torchutils.callbacks import ModelSaverCallback, LoggerCallback
 from torchutils.dataloaders import mnist_loader
 from torchutils.experiment import Config, Experiment
-from torchutils.metrics import BatchMetric, accuracy, ValidationMetric
+from torchutils.metrics import accuracy, ValidationMetric
 from torchutils.train import fit
 
 
