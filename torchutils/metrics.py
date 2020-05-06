@@ -25,13 +25,13 @@ def evaluate(
     return test_loss / count
 
 
-def accuracy(predictions: torch.Tensor, targets: torch.Tensor) -> float:
+def accuracy(predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     acc = (targets == predictions.argmax(-1)).float()
-    return torch.mean(acc).detach().numpy()
+    return torch.mean(acc).detach()
 
 
-def mse(predictions: torch.Tensor, targets: torch.Tensor) -> float:
-    return torch.mean((predictions - targets) ** 2.).detach().numpy()
+def mse(predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    return torch.mean((predictions - targets) ** 2.).detach()
 
 
 class BatchMetric(Callback):
