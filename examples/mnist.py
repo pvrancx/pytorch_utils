@@ -4,10 +4,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from torchutils.callbacks import ModelSaverCallback, LoggerCallback
+from torchutils.callbacks import ModelSaverCallback, LoggerCallback, TensorBoardLogger
 from torchutils.dataloaders import mnist_loader
 from torchutils.experiment import Config, Experiment
-from torchutils.metrics import accuracy, ValidationMetric
+from torchutils.metrics import accuracy
 from torchutils.train import fit
 
 
@@ -51,16 +51,15 @@ def experiment(lr=1e-1):
         model=network,
         optimizer=optimizer,
         config=config(),
-        loss_fn=F.nll_loss,
-        lr_scheduler=optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+        loss_fn=F.nll_loss
     )
 
 
-def callbacks(exp, data):
+def callbacks():
     return [
         LoggerCallback(),
         ModelSaverCallback('.', frequency=10),
-        ValidationMetric(accuracy, data.test, name='validation accuracy')
+        TensorBoardLogger('.')
     ]
 
 
@@ -68,8 +67,9 @@ def _main():
     data = mnist_loader(path='../data')
     exp = experiment()
     fit(exp, data,
-        callbacks=callbacks(exp, data),
-        metrics=[accuracy],
+        callbacks=callbacks(),
+        train_metrics={'accuracy': accuracy},
+        validation_metrics={'validation_accuracy': accuracy},
         lr_schedulers=[ReduceLROnPlateau(exp.optimizer)]
         )
     print(exp.metrics)

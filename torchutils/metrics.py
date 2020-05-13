@@ -1,28 +1,9 @@
-from typing import Dict, Callable
+from typing import Dict, Callable, List, Optional, Tuple
 
 import torch
 
 from torchutils.callbacks import Callback
 from torchutils.experiment import Experiment
-
-
-def evaluate(
-        exp: Experiment,
-        loss_fn: Callable,
-        data_loader: torch.utils.data.DataLoader,
-) -> float:
-
-    exp.model.to(exp.config.device)
-    exp.model.eval()
-    test_loss = 0.0
-    count = 0
-    for inputs, labels in data_loader:
-        with torch.no_grad():
-            inputs, labels = inputs.to(exp.config.device), labels.to(exp.config.device)
-            outputs = exp.model(inputs)
-            test_loss += loss_fn(outputs, labels)
-            count += 1
-    return test_loss / count
 
 
 def accuracy(predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
@@ -36,52 +17,37 @@ def mse(predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
 
 class BatchMetric(Callback):
     """Metric that computed over batches"""
-    def __init__(self, f: Callable, name: str = None, f_args: Dict = None, priority: int = -1):
-        super(BatchMetric, self).__init__(priority)
-        self._name = name or f.__name__
+    def __init__(
+            self,
+            f: Callable,
+            name: str = None,
+            f_args: Dict = None,
+            train: bool = True,
+            priority: int = -1
+    ):
+        super(BatchMetric, self).__init__(priority, name or f.__name__)
         self._fun = f
         self._f_args = f_args or {}
         self._total = 0.
         self._count = 0.
+        self._train = train
 
-    def on_epoch_start(self, epoch: int) -> bool:
+    def on_epoch_start(self, **kwargs):
         self._total = 0.
         self._count = 0.
-        return True
 
-    def on_epoch_end(self, epoch: int) -> bool:
+    def on_epoch_end(self, epoch_id: int, experiment: Experiment, **kwargs):
         value = self._total / self._count
-        if epoch in self.exp.metrics:
-            self.exp.metrics[epoch].update({self._name: value})
-        else:
-            self.exp.metrics[epoch] = {self._name: value}
-        return True
+        experiment.log_epoch_metric(epoch_id, self.name, value)
 
-    def on_batch_end(self, batch_id: int, predictions: torch.Tensor, loss: float) -> bool:
-        n_items = predictions.shape[0]
-        self._count += n_items
-        self._total += self._fun(predictions, self.last_batch[-1], **self._f_args) * n_items
-        return True
-
-
-class ValidationMetric(Callback):
-    """ Metric that evaluates criterion on given dataset at end of epoch"""
-    def __init__(
+    def on_batch_end(
             self,
-            criterion: Callable,
-            dataloader: torch.utils.data.DataLoader,
-            name: str = None,
-            priority: int = -1
-    ):
-        super(ValidationMetric, self). __init__(priority)
-        self.criterion = criterion
-        self.dataloader = dataloader
-        self._name = name or criterion.__name__
-
-    def on_epoch_end(self, epoch: int) -> bool:
-        value = evaluate(self.exp, self.criterion, self.dataloader)
-        if epoch in self.exp.metrics:
-            self.exp.metrics[epoch].update({self._name: value})
-        else:
-            self.exp.metrics[epoch] = {self._name: value}
-        return True
+            last_batch: Tuple,
+            batch_predictions: torch.Tensor,
+            batch_loss: float,
+            training: bool,
+            **kwargs):
+        n_items = batch_predictions.shape[0]
+        if (self._train and training) or (not self._train and not training):
+            self._count += n_items
+            self._total += self._fun(batch_predictions, last_batch[-1], **self._f_args) * n_items
