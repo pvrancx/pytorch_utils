@@ -7,16 +7,21 @@ from torchutils.experiment import Experiment, DataLoaders, VALIDATION_LOSS_LABEL
 from torchutils.metrics import BatchMetric
 
 
-def get_batch_loss(exp: Experiment, batch: Tuple) -> Tuple[torch.Tensor, torch.Tensor]:
-    inputs, labels = batch[0].to(exp.config.device), batch[1].to(exp.config.device)
+def get_batch_loss(
+        exp: Experiment, inputs: torch.Tensor, labels: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
+
     outputs = exp.model(inputs)
     loss = exp.loss_fn(outputs, labels)
     return outputs, loss
 
 
-def train_batch(exp: Experiment, batch: Tuple) -> Tuple[torch.Tensor, torch.Tensor]:
+def train_batch(
+        exp: Experiment, inputs: torch.Tensor, labels: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
+
     exp.optimizer.zero_grad()
-    outputs, loss = get_batch_loss(exp, batch)
+    outputs, loss = get_batch_loss(exp, inputs, labels)
     loss.backward()
     exp.optimizer.step()
     return outputs, loss
@@ -31,8 +36,9 @@ def train(
     exp.model.to(exp.config.device)
     exp.model.train()
     for batch_id, (inputs, labels) in enumerate(data_loader):
+        inputs, labels = inputs.to(exp.config.device), labels.to(exp.config.device)
         callbacks.on_batch_start(batch_id, (inputs, labels), True)
-        predictions, loss = train_batch(exp, (inputs, labels))
+        predictions, loss = train_batch(exp, inputs, labels)
         callbacks.on_batch_end(predictions, loss)
 
 
@@ -47,9 +53,10 @@ def validate(
     test_loss = 0.0
     count = 0
     for batch_id, (inputs, labels) in enumerate(data_loader):
+        inputs, labels = inputs.to(exp.config.device), labels.to(exp.config.device)
         callbacks.on_batch_start(batch_id, (inputs, labels), False)
         with torch.no_grad():
-            outputs, test_loss = get_batch_loss(exp, (inputs, labels))
+            outputs, test_loss = get_batch_loss(exp, inputs, labels)
         count += 1
         callbacks.on_batch_end(outputs, test_loss)
     return test_loss / count
