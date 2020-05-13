@@ -8,11 +8,11 @@ from torchutils.experiment import Experiment
 
 def accuracy(predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     acc = (targets == predictions.argmax(-1)).float()
-    return torch.mean(acc).detach()
+    return torch.mean(acc).detach().cpu()
 
 
 def mse(predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-    return torch.mean((predictions - targets) ** 2.).detach()
+    return torch.mean((predictions - targets) ** 2.).detach().cpu()
 
 
 class BatchMetric(Callback):
